@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "steam-lib-db"
+version = "0.1.0"
+description = "Keep a Steam library in Google Sheets without overwriting annotations."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["requests>=2.32.4,<3", "google-auth>=2.40,<3"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff>=0.11,<1", "build>=1.2,<2"]
+
+[project.scripts]
+steam-library = "steam_library.cli:main"
+
+[project.urls]
+Repository = "https://github.com/philipguin/steam-lib-db"
+Issues = "https://github.com/philipguin/steam-lib-db/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/steam_library"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

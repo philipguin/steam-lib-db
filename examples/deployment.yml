@@ -1,0 +1,39 @@
+# Copy to .github/workflows/steam-library.yml in YOUR deployment repository.
+# Use a reviewed full commit SHA instead of v0.1.0 for immutable pinning.
+name: My Steam library
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        type: choice
+        options: [sync, init, status, migrate]
+        default: sync
+      dry_run:
+        description: Preview sync without writing
+        type: boolean
+        default: true
+      apply_migration:
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 7 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: steam-library-single-writer
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: philipguin/steam-lib-db@v0.1.0
+        with:
+          command: ${{ inputs.command || 'sync' }}
+          # Dispatch defaults to preview; scheduled runs apply.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          apply-migration: ${{ inputs.apply_migration && 'true' || 'false' }}
+          google-sheet-id: ${{ secrets.GOOGLE_SHEET_ID }}
+          google-credentials-json: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          steam-id: ${{ secrets.STEAM_ID }}
+          steam-api-key: ${{ secrets.STEAM_API_KEY }}

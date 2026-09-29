@@ -1,0 +1,69 @@
+name: Steam Library DB
+description: Synchronize Steam games to Google Sheets while preserving user annotations.
+branding:
+  icon: database
+  color: blue
+inputs:
+  command:
+    description: One of init, sync, status, migrate
+    default: sync
+  dry-run:
+    description: Preview sync without writes
+    default: 'true'
+  allow-empty:
+    description: Accept an explicit zero-game response
+    default: 'false'
+  apply-migration:
+    description: Apply the migration after creating in-sheet backups
+    default: 'false'
+  google-sheet-id:
+    description: Target spreadsheet ID
+    required: true
+  google-credentials-json:
+    description: Google service-account JSON; pass a deployment secret
+    required: true
+  steam-id:
+    description: SteamID64; required for sync
+    default: ''
+  steam-api-key:
+    description: Steam Web API key; pass a deployment secret for sync
+    default: ''
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated CLI
+      shell: bash
+      run: |
+        python -m venv "$RUNNER_TEMP/steam-library-venv"
+        "$RUNNER_TEMP/steam-library-venv/bin/python" -m pip install --disable-pip-version-check "$GITHUB_ACTION_PATH"
+    - name: Run library command
+      shell: bash
+      env:
+        LIBRARY_COMMAND: ${{ inputs.command }}
+        LIBRARY_DRY_RUN: ${{ inputs.dry-run }}
+        LIBRARY_ALLOW_EMPTY: ${{ inputs.allow-empty }}
+        LIBRARY_APPLY_MIGRATION: ${{ inputs.apply-migration }}
+        GOOGLE_SHEET_ID: ${{ inputs.google-sheet-id }}
+        GOOGLE_CREDENTIALS_JSON: ${{ inputs.google-credentials-json }}
+        STEAM_ID: ${{ inputs.steam-id }}
+        STEAM_API_KEY: ${{ inputs.steam-api-key }}
+      run: |
+        for flag in "$LIBRARY_DRY_RUN" "$LIBRARY_ALLOW_EMPTY" "$LIBRARY_APPLY_MIGRATION"; do
+          case "$flag" in true|false) ;; *) echo 'Boolean inputs must be true or false.' >&2; exit 2 ;; esac
+        done
+        args=("$LIBRARY_COMMAND")
+        case "$LIBRARY_COMMAND" in
+          init|status) ;;
+          sync)
+            if [[ "$LIBRARY_DRY_RUN" == true ]]; then args+=(--dry-run); fi
+            if [[ "$LIBRARY_ALLOW_EMPTY" == true ]]; then args+=(--allow-empty); fi
+            ;;
+          migrate)
+            if [[ "$LIBRARY_APPLY_MIGRATION" == true ]]; then args+=(--apply); fi
+            ;;
+          *) echo 'Unsupported command.' >&2; exit 2 ;;
+        esac
+        "$RUNNER_TEMP/steam-library-venv/bin/steam-library" "${args[@]}"
